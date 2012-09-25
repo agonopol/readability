@@ -10,6 +10,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	body := doc.Body()
+	body, _ := doc.Content()
 	fmt.Printf("%v\n", string(body))
 }
