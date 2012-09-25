@@ -68,7 +68,7 @@ func init() {
 }
 
 type document struct {
-	body []byte
+	parser *htmlParser
 }
 
 func Document(url string) (*document, error) {
@@ -81,5 +81,14 @@ func Document(url string) (*document, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &document{body}, nil
+	body = regexes["replaceFontsRe"].ReplaceAll(regexes["replaceBrsRe"].ReplaceAll(body, []byte("</p><p>")), []byte("<\\span>"))
+	parser, err := HTMLParser(body)
+	if err != nil {
+		return nil, err
+	}
+	return &document{parser}, nil
+}
+
+func (this *document) Body() []byte {
+	return this.parser.Body()
 }
