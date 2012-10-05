@@ -1,8 +1,8 @@
 package readability
 
 import (
-	"net/http"
 	"io/ioutil"
+	"net/http"
 	"regexp"
 )
 
@@ -90,12 +90,13 @@ func Document(url string) (*document, error) {
 }
 
 func (this *document) Content() ([]byte, error) {
-	err := this.parser.prepareCandidates()
-	if err != nil {
+	if err := this.parser.prepareCandidates(); err != nil {
 		return nil, err
 	}
-	err = this.parser.removeUnlikelyCandidates()
-	if err != nil {
+	if err := this.parser.removeUnlikelyCandidates(); err != nil {
+		return nil, err
+	}
+	if err := this.parser.transformMisusedDivsIntoParagraphs(); err != nil {
 		return nil, err
 	}
 	return this.parser.Body(), nil

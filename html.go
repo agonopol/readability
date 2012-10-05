@@ -73,6 +73,23 @@ func (this *htmlParser) removeUnlikelyCandidates() error {
 	return nil
 }
 
+func (this *htmlParser) transformMisusedDivsIntoParagraphs() error {
+	this.walkElements(this.doc, func(node xml.Node) error {
+		if strings.ToLower(node.Name()) == "div" {
+			if regexes["divToPElementsRe"].Match([]byte(node.InnerHtml())) {
+				node.SetName("p")
+			}
+		}
+		return nil
+	})
+	return nil
+}
+
+func (this *htmlParser) scoreParagraphs() (map[*xml.Node]int64, error) {
+
+	return nil, nil
+}
+
 func (this *htmlParser) prepareCandidates() error {
 	scripts, err := this.doc.Search("//script")
 	if err != nil {
