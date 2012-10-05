@@ -89,6 +89,14 @@ func Document(url string) (*document, error) {
 	return &document{parser}, nil
 }
 
-func (this *document) Body() []byte {
-	return this.parser.Body()
+func (this *document) Content() ([]byte, error) {
+	err := this.parser.prepareCandidates()
+	if err != nil {
+		return nil, err
+	}
+	err = this.parser.removeUnlikelyCandidates()
+	if err != nil {
+		return nil, err
+	}
+	return this.parser.Body(), nil
 }
