@@ -21,4 +21,5 @@ _testmain.go
 
 *.exe
 
-greadability/greadability
+readability/readability
+*.rb
