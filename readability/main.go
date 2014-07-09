@@ -2,7 +2,7 @@ package main
 
 import (
 	"readability"
-	// "fmt"
+	"fmt"
 )
 
 func main() {
@@ -10,9 +10,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	body, _ := doc.Content()
-	// fmt.Printf("%v\n", string(body))
-	if body == nil {
-		panic(nil)
+	body, err := doc.Content()
+	if err != nil {
+		panic(err)
 	}
+	fmt.Printf("%v\n", string(body))
 }

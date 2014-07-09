@@ -13,27 +13,28 @@ type htmlParser struct {
 }
 
 func HTMLParser(content []byte) (*htmlParser, error) {
+	content = regexes["replaceFontsRe"].ReplaceAll(regexes["replaceBrsRe"].ReplaceAll(content, []byte("</p><p>")), []byte("\\1span>"))
+
 	doc, err := gokogiri.ParseHtml(content)
-	defer doc.Free()
 
 	if err != nil {
 		return nil, err
 	}
 
-	bodies, err := doc.Search("//body")
+	comments, err := doc.Search("//comment()")
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := gokogiri.ParseHtml([]byte(bodies[0].Content()))
-	comments, err := body.Search("//comment()")
-	if err != nil {
-		return nil, err
-	}
 	for _, comment := range comments {
 		comment.Remove()
 	}
-	return &htmlParser{body}, nil
+
+	return &htmlParser{doc}, nil
+}
+
+func (this *htmlParser) free() {
+	this.doc.Free()
 }
 
 func (this *htmlParser) Body() []byte {
@@ -45,7 +46,6 @@ func (this *htmlParser) walkElements(node xml.Node, f func(xml.Node) error) erro
 	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
 		err := this.walkElements(child, f)
 		if err != nil {
-			println("GOT ERROR")
 			return err
 		}
 	}
@@ -105,5 +105,17 @@ func (this *htmlParser) prepareCandidates() error {
 	for _, style := range styles {
 		style.Remove()
 	}
+
+	this.removeUnlikelyCandidates()
+
+	this.transformMisusedDivsIntoParagraphs()
 	return nil
+}
+
+func (this *htmlParser) paragraphs() ([]xml.Node, error) {
+	p, err := this.doc.Search("p,td")
+	if err != nil {
+		return nil ,err
+	}
+	return p, nil
 }
