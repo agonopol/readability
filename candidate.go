@@ -2,14 +2,43 @@ package readability
 
 import (
 	"github.com/moovweb/gokogiri/xml"
+	"github.com/moovweb/gokogiri/html"
 	"math"
-	"regexp"
+	_ "fmt"
 	"strings"
 )
 
-func weight(elem xml.Node) float64 {
+
+type Candidate struct {
+	node xml.Node
+	score float64
+}
+
+func newCadidate(elem xml.Node) *Candidate{
+	this := &Candidate{elem, 0}
+	switch strings.ToLower(elem.Name()) {
+	
+		case "div":
+			this.score =  this.weight() + 5.0
+			break
+		case "blockquote":
+			this.score =  this.weight() + 3.0
+			break
+		case "form":
+			this.score =  this.weight() - 3.0
+			break
+		case "th":
+			this.score =  this.weight() - 5.0
+			break
+		default:
+			this.score =  this.weight()
+			break
+	}
+	return this
+}
+func (this *Candidate) weight() float64 {
 	weight := 0.0
-	class := elem.Attr("class")
+	class := this.node.Attr("class")
 	if class != "" {
 		if regexes["negativeRe"].Match([]byte(class)) {
 			weight -= 25.0
@@ -18,7 +47,7 @@ func weight(elem xml.Node) float64 {
 		}
 	}
 
-	id := elem.Attr("id")
+	id := this.node.Attr("id")
 	if id != "" {
 		if regexes["negativeRe"].Match([]byte(id)) {
 			weight -= 25.0
@@ -29,47 +58,20 @@ func weight(elem xml.Node) float64 {
 	return weight
 }
 
-func score(node xml.Node) float64 {
-	switch strings.ToLower(node.Name()) {
-	case "div":
-		return weight(node) + 5.0
-	case "blockquote":
-		return weight(node) + 3.0
-	case "form":
-		return weight(node) - 3.0
-	case "th":
-		return weight(node) - 5.0
-	default:
-		return weight(node)
-	}
-}
 
-func linkDensity(node xml.Node) float64 {
-	links, err := node.Search("a")
-	if err != nil {
-		return 0.0
-	}
 
-	llength := 0.0
-	for _, link := range links {
-		llength += float64(len(link.Content()))
-	}
-	tlength := float64(len(node.Content()))
-	return llength / tlength
-}
+func getCandidates(doc *html.HtmlDocument, minLen int) (map[string]*Candidate, error) {
 
-func getCandidates(html *htmlParser, minLen int) (map[xml.Node]float64, error) {
+	candidates := make(map[string]*Candidate)
 
-	candidates := make(map[xml.Node]float64)
-
-	paragraphs, err := html.paragraphs()
+	paragraphs, err := doc.Search(`//p|//td`)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, elem := range paragraphs {
-
-		text := elem.InnerHtml()
+		text := elem.Content()
+		
 		if len(text) < minLen {
 			continue
 		}
@@ -81,75 +83,37 @@ func getCandidates(html *htmlParser, minLen int) (map[xml.Node]float64, error) {
 		parent := elem.Parent()
 		grandParent := parent.Parent()
 
-		if _, found := candidates[parent]; !found {
-			candidates[parent] = score(parent)
+		if _, found := candidates[parent.String()]; !found {
+			candidates[parent.String()] = newCadidate(parent)
 		}
-		candidates[parent] = candidates[parent] + sc
+		candidates[parent.String()].score += sc
 
 		if grandParent != nil && grandParent.IsValid() {
-			if _, found := candidates[grandParent]; !found {
-				candidates[grandParent] = score(grandParent)
+			if _, found := candidates[grandParent.String()]; !found {
+				candidates[grandParent.String()] = newCadidate(grandParent)
 			}
-			candidates[grandParent] = candidates[grandParent] + (sc / 2.0)
+			candidates[grandParent.String()].score += (sc / 2.0)
 		}
 
-		for candidate, score := range candidates {
-			candidates[candidate] = score * (1 - linkDensity(candidate))
+		for _, candidate := range candidates {
+			candidate.score = (candidate.score * (1 - linkDensity(candidate.node)))
 		}
 
 	}
-
+	
 	return candidates, nil
 }
 
-func bestCandidate(candidates map[xml.Node]float64) (xml.Node, float64) {
-	var best xml.Node
-	var champ = math.Inf(-1)
-	for node, score := range candidates {
-		if score > champ {
-			best = node
-			champ = score
+func bestCandidate(candidates map[string]*Candidate) *Candidate {
+	var best *Candidate 
+	champ := math.Inf(-1)
+	for _, candidate := range candidates {
+		if candidate.score > champ {
+			best = candidate
+			champ = candidate.score
 		}
 	}
-
-	return best, champ
+	return best
 }
 
-func extend(doc *xml.XmlDocument, node xml.Node) {
-	dup := node.DuplicateTo(doc, 1)
-	if strings.ToLower(dup.Name()) != "p" || strings.ToLower(dup.Name()) != "div" {
-		dup.SetName("div")
-	}
-}
 
-func getArticle(candidates map[xml.Node]float64) *xml.XmlDocument {
-	best, score := bestCandidate(candidates)
-	threshold := math.Max(10.0, score*0.2)
-
-	doc := xml.CreateEmptyDocument(xml.DefaultEncodingBytes, xml.DefaultEncodingBytes)
-
-	for node := best.Parent().FirstChild(); node != nil && node.IsValid(); node = node.NextSibling() {
-		if node == best {
-			extend(doc, node)
-		} else if candidates[node] >= threshold {
-			extend(doc, node)
-		} else if strings.ToLower(node.Name()) == "p" {
-			lDensity := linkDensity(node)
-			length := len(node.Content())
-			if lDensity < 0.25 && length > 80 {
-				extend(doc, node)
-			} else if length < 80 && lDensity == 0.0 {
-				match, err := regexp.Match(`\.( |$)`, []byte(node.Content()))
-				if err != nil {
-					panic(err)
-				}
-				if match {
-					extend(doc, node)
-				}
-			}
-		}
-
-	}
-
-	return doc
-}

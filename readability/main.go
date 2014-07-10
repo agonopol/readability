@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	doc, err := readability.Document("http://en.wikipedia.org/wiki/The_Reluctant_Fundamentalist")
+	doc, err := readability.ParseURL("http://en.wikipedia.org/wiki/The_Reluctant_Fundamentalist")
 	if err != nil {
 		panic(err)
 	}
