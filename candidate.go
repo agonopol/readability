@@ -1,38 +1,37 @@
 package readability
 
 import (
-	"github.com/moovweb/gokogiri/xml"
-	"github.com/moovweb/gokogiri/html"
-	"math"
 	_ "fmt"
+	"github.com/moovweb/gokogiri/html"
+	"github.com/moovweb/gokogiri/xml"
+	"math"
 	"strings"
 )
 
-
 type Candidate struct {
-	node xml.Node
+	node  xml.Node
 	score float64
 }
 
-func newCadidate(elem xml.Node) *Candidate{
+func newCadidate(elem xml.Node) *Candidate {
 	this := &Candidate{elem, 0}
 	switch strings.ToLower(elem.Name()) {
-	
-		case "div":
-			this.score =  this.weight() + 5.0
-			break
-		case "blockquote":
-			this.score =  this.weight() + 3.0
-			break
-		case "form":
-			this.score =  this.weight() - 3.0
-			break
-		case "th":
-			this.score =  this.weight() - 5.0
-			break
-		default:
-			this.score =  this.weight()
-			break
+
+	case "div":
+		this.score = this.weight() + 5.0
+		break
+	case "blockquote":
+		this.score = this.weight() + 3.0
+		break
+	case "form":
+		this.score = this.weight() - 3.0
+		break
+	case "th":
+		this.score = this.weight() - 5.0
+		break
+	default:
+		this.score = this.weight()
+		break
 	}
 	return this
 }
@@ -58,8 +57,6 @@ func (this *Candidate) weight() float64 {
 	return weight
 }
 
-
-
 func getCandidates(doc *html.HtmlDocument, minLen int) (map[string]*Candidate, error) {
 
 	candidates := make(map[string]*Candidate)
@@ -71,7 +68,7 @@ func getCandidates(doc *html.HtmlDocument, minLen int) (map[string]*Candidate, e
 
 	for _, elem := range paragraphs {
 		text := elem.Content()
-		
+
 		if len(text) < minLen {
 			continue
 		}
@@ -100,12 +97,12 @@ func getCandidates(doc *html.HtmlDocument, minLen int) (map[string]*Candidate, e
 		}
 
 	}
-	
+
 	return candidates, nil
 }
 
 func bestCandidate(candidates map[string]*Candidate) *Candidate {
-	var best *Candidate 
+	var best *Candidate
 	champ := math.Inf(-1)
 	for _, candidate := range candidates {
 		if candidate.score > champ {
@@ -115,5 +112,3 @@ func bestCandidate(candidates map[string]*Candidate) *Candidate {
 	}
 	return best
 }
-
-

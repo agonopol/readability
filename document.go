@@ -6,8 +6,8 @@ import (
 	"github.com/moovweb/gokogiri/html"
 	"github.com/moovweb/gokogiri/xml"
 	"io/ioutil"
-	"net/http"
 	"math"
+	"net/http"
 	"regexp"
 	"strings"
 )
@@ -139,8 +139,7 @@ func (this *Document) misusedDivsIntoParagraphs() error {
 	return nil
 }
 
-
-func extend(doc *xml.ElementNode, node xml.Node) {	
+func extend(doc *xml.ElementNode, node xml.Node) {
 	dup := node.Duplicate(1).(*xml.ElementNode)
 	doc.AddChild(dup)
 	if strings.ToLower(dup.Name()) != "p" || strings.ToLower(dup.Name()) != "div" {
@@ -153,7 +152,7 @@ func (this *Document) getArticle(candidates map[string]*Candidate) xml.Node {
 	threshold := math.Max(10.0, best.score*0.2)
 
 	doc := this.doc.CreateElementNode("div")
-		
+
 	for node := best.node.Parent().FirstChild(); node != nil && node.IsValid(); node = node.NextSibling() {
 		if node.String() == best.node.String() {
 			extend(doc, node)
@@ -179,3 +178,69 @@ func (this *Document) getArticle(candidates map[string]*Candidate) xml.Node {
 
 	return doc
 }
+
+func (this *Document) sanitize(candidates map[string]*Candidate, article xml.Node) string {
+	return ""
+
+}
+
+// def sanitize(node, candidates, options = {})
+//   node.css("h1, h2, h3, h4, h5, h6").each do |header|
+//     header.remove if class_weight(header) < 0 || get_link_density(header) > 0.33
+//   end
+//
+//   node.css("form, object, iframe, embed").each do |elem|
+//     elem.remove
+//   end
+//
+//   if @options[:remove_empty_nodes]
+//     # remove <p> tags that have no text content - this will also remove p tags that contain only images.
+//     node.css("p").each do |elem|
+//       elem.remove if elem.content.strip.empty?
+//     end
+//   end
+//
+//   # Conditionally clean <table>s, <ul>s, and <div>s
+//   clean_conditionally(node, candidates, "table, ul, div")
+//
+//   # We'll sanitize all elements using a whitelist
+//   base_whitelist = @options[:tags] || %w[div p]
+//   # We'll add whitespace instead of block elements,
+//   # so a<br>b will have a nice space between them
+//   base_replace_with_whitespace = %w[br hr h1 h2 h3 h4 h5 h6 dl dd ol li ul address blockquote center]
+//
+//   # Use a hash for speed (don't want to make a million calls to include?)
+//   whitelist = Hash.new
+//   base_whitelist.each {|tag| whitelist[tag] = true }
+//   replace_with_whitespace = Hash.new
+//   base_replace_with_whitespace.each { |tag| replace_with_whitespace[tag] = true }
+//
+//   ([node] + node.css("*")).each do |el|
+//     # If element is in whitelist, delete all its attributes
+//     if whitelist[el.node_name]
+//       el.attributes.each { |a, x| el.delete(a) unless @options[:attributes] && @options[:attributes].include?(a.to_s) }
+//
+//       # Otherwise, replace the element with its contents
+//     else
+//       # If element is root, replace the node as a text node
+//       if el.parent.nil?
+//         node = Nokogiri::XML::Text.new(el.text, el.document)
+//         break
+//       else
+//         if replace_with_whitespace[el.node_name]
+//           el.swap(Nokogiri::XML::Text.new(' ' << el.text << ' ', el.document))
+//         else
+//           el.swap(Nokogiri::XML::Text.new(el.text, el.document))
+//         end
+//       end
+//     end
+//
+//   end
+//
+//   s = Nokogiri::XML::Node::SaveOptions
+//   save_opts = s::NO_DECLARATION | s::NO_EMPTY_TAGS | s::AS_XHTML
+//   html = node.serialize(:save_with => save_opts)
+//
+//   # Get rid of duplicate whitespace
+//   return html.gsub(/[\r\n\f]+/, "\n" )
+// end
